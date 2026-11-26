@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卡通風任務完成表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap');
+        
+        body {
+            font-family: 'Nunito', 'Microsoft JhengHei', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 統一厚實的卡通風格陰影 */
+        .cartoon-shadow {
+            box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+        }
+        
+        .cartoon-shadow:active {
+            box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+            transform: translate(4px, 4px);
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+    </style>
+</head>
+<body class="bg-yellow-200 h-screen w-screen flex items-center justify-center select-none overflow-hidden touch-manipulation text-black transition-colors duration-500">
+
+    <!-- ==================== 1. 設定畫面 (整齊的兩欄網格) ==================== -->
+    <div id="setup-screen" class="w-11/12 max-w-5xl bg-white border-8 border-black rounded-[2.5rem] cartoon-shadow flex flex-col p-6 md:p-10 z-10">
+        <h1 class="text-4xl md:text-5xl font-black text-center mb-8 tracking-wide">⚙️ 任務設定 (橫式專用)</h1>
+        
+        <!-- 使用 Grid 確保完美對齊 -->
+        <div class="grid grid-cols-2 gap-x-12 gap-y-6 w-full px-4 md:px-12">
+            
+            <!-- 情境選擇 -->
+            <div class="flex flex-col items-start gap-2">
+                <label class="text-2xl font-bold">🎈 選擇情境：</label>
+                <select id="scenario-select" class="w-full text-xl p-3 bg-sky-100 border-4 border-black rounded-xl cartoon-shadow font-bold outline-none cursor-pointer">
+                    <option value="A">上課答題 (老師我完成了)</option>
+                    <option value="B">找東西任務 (可以吃餅乾)</option>
+                </select>
+            </div>
+
+            <!-- 自訂語音 -->
+            <div class="flex flex-col items-start gap-2">
+                <label class="text-2xl font-bold">🌟 過關語音：</label>
+                <input type="text" id="custom-text" value="完成了！可以吃餅乾" class="w-full text-xl p-3 bg-orange-100 border-4 border-black rounded-xl cartoon-shadow font-bold outline-none">
+            </div>
+
+            <!-- 任務數量 -->
+            <div class="flex flex-col items-start gap-2">
+                <label class="text-2xl font-bold">🔢 任務數量 (1-8)：</label>
+                <select id="count-select" class="w-full text-xl p-3 bg-green-100 border-4 border-black rounded-xl cartoon-shadow font-bold outline-none cursor-pointer">
+                    <option value="1">1 個任務</option>
+                    <option value="2">2 個任務</option>
+                    <option value="3">3 個任務</option>
+                    <option value="4" selected>4 個任務</option>
+                    <option value="5">5 個任務</option>
+                    <option value="6">6 個任務</option>
+                    <option value="7">7 個任務</option>
+                    <option value="8">8 個任務</option>
+                </select>
+            </div>
+
+            <!-- 自訂圖片 -->
+            <div class="flex flex-col items-start gap-2">
+                <label class="text-2xl font-bold">🖼️ 獎勵圖片 (可選)：</label>
+                <input type="file" id="custom-image-input" accept="image/*" class="w-full text-lg p-2 bg-pink-100 border-4 border-black rounded-xl cartoon-shadow font-bold outline-none cursor-pointer file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-2 file:border-black file:font-bold file:bg-white file:text-black">
+            </div>
+
+        </div>
+
+        <div class="flex justify-center mt-10">
+            <button onclick="startTasks()" class="w-2/3 md:w-1/2 bg-yellow-400 hover:bg-yellow-300 text-3xl font-black py-4 border-4 border-black rounded-2xl cartoon-shadow transition-all">
+                🚀 開始任務
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 2. 任務畫面 (單排橫置) ==================== -->
+    <div id="task-screen" class="hidden w-full h-full flex-col items-center justify-center p-6 gap-8 z-10">
+        <!-- 頂部標題區 -->
+        <h2 id="task-title" class="text-4xl md:text-5xl font-black bg-white px-12 py-4 border-4 border-black rounded-full cartoon-shadow text-center">
+            任務進行中
+        </h2>
+        
+        <!-- 卡片容器 (單排橫向) -->
+        <div id="card-container" class="flex flex-row items-center justify-center gap-4 md:gap-6 w-full px-4 md:px-12 h-[35vh]">
+            <!-- 由 JS 動態產生 -->
+        </div>
+    </div>
+
+    <!-- ==================== 3. 獎勵彈窗 ==================== -->
+    <div id="reward-modal" class="fixed inset-0 bg-black/80 hidden flex-col items-center justify-center z-50 p-4">
+        <div id="reward-content" class="bg-white border-8 border-black rounded-[2.5rem] p-8 md:p-12 flex flex-col items-center justify-center gap-8 cartoon-shadow scale-0 max-w-[90vw] max-h-[90vh]">
+            
+            <h2 id="reward-title" class="text-5xl md:text-6xl font-black text-center text-pink-500 drop-shadow-[2px_2px_0_rgba(0,0,0,1)]">
+                <!-- 動態替換標題 -->
+            </h2>
+            
+            <div id="reward-visual" class="flex justify-center items-center h-[45vh] w-full">
+                <!-- 動態替換圖片或星星 -->
+            </div>
+
+            <button onclick="resetApp()" class="px-12 py-4 bg-sky-400 hover:bg-sky-300 text-4xl font-black border-4 border-black rounded-2xl cartoon-shadow transition-all active:scale-95">
+                🔄 再玩一次
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== JavaScript 邏輯 ==================== -->
+    <script>
+        let currentScenario = 'A';
+        let totalTasks = 4;
+        let tasksCompleted = [];
+        let customImageDataUrl = null;
+        let customSpeechText = "";
+
+        // 讀取上傳圖片
+        document.addEventListener('DOMContentLoaded', () => {
+            const imageInput = document.getElementById('custom-image-input');
+            if (imageInput) {
+                imageInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            customImageDataUrl = event.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        customImageDataUrl = null;
+                    }
+                });
+            }
+        });
+        
+        // 音效系統
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playClickSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playSuccessSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.15);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.15 + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + i * 0.15);
+                osc.stop(audioCtx.currentTime + i * 0.15 + 0.2);
+            });
+        }
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-TW';
+                utterance.rate = 0.9;
+                utterance.pitch = 1.2;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // 啟動任務
+        function startTasks() {
+            currentScenario = document.getElementById('scenario-select').value;
+            totalTasks = parseInt(document.getElementById('count-select').value);
+            customSpeechText = document.getElementById('custom-text').value || "過關了"; 
+            tasksCompleted = Array(totalTasks).fill(false);
+            
+            document.getElementById('setup-screen').classList.add('hidden');
+            
+            const taskScreen = document.getElementById('task-screen');
+            taskScreen.classList.remove('hidden');
+            taskScreen.classList.add('flex');
+            
+            document.getElementById('task-title').innerText = currentScenario === 'A' ? '📝 上課答題' : '🔍 找東西任務';
+            
+            // 變換全域背景色
+            if (currentScenario === 'A') {
+                document.body.classList.remove('bg-yellow-200', 'bg-green-200');
+                document.body.classList.add('bg-sky-200');
+            } else {
+                document.body.classList.remove('bg-yellow-200', 'bg-sky-200');
+                document.body.classList.add('bg-green-200');
+            }
+
+            renderBoxes();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        // 渲染任務方塊
+        function renderBoxes() {
+            const container = document.getElementById('card-container');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < totalTasks; i++) {
+                const isDone = tasksCompleted[i];
+                const box = document.createElement('div');
+                
+                // 完全橫式自動縮放比例 (維持正方形)
+                let baseClasses = "aspect-square w-full max-w-[28vh] max-h-[28vh] border-4 border-black rounded-3xl flex items-center justify-center transition-all duration-200 shrink ";
+                
+                if (isDone) {
+                    box.className = baseClasses + "bg-green-400 cartoon-shadow scale-105";
+                    box.innerHTML = `<svg class="w-1/2 h-1/2 text-black drop-shadow-[2px_2px_0_rgba(255,255,255,0.8)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="6" d="M5 13l4 4L19 7"></path></svg>`;
+                } else {
+                    box.className = baseClasses + "bg-white cartoon-shadow cursor-pointer hover:bg-gray-100 active:scale-95 active:translate-y-1";
+                }
+                
+                box.onclick = () => completeTask(i);
+                container.appendChild(box);
+            }
+        }
+
+        // 完成單一任務
+        function completeTask(index) {
+            if (tasksCompleted[index]) return; 
+            
+            tasksCompleted[index] = true;
+            playClickSound();
+            renderBoxes();
+            
+            if (tasksCompleted.every(status => status === true)) {
+                setTimeout(showRewardModal, 400);
+            }
+        }
+
+        // 顯示獎勵畫面
+        function showRewardModal() {
+            const modal = document.getElementById('reward-modal');
+            const content = document.getElementById('reward-content');
+            const title = document.getElementById('reward-title');
+            const visual = document.getElementById('reward-visual');
+            
+            title.innerText = customSpeechText;
+            
+            // 處理圖片回饋 (有上傳圖 > 預設情境)
+            if (customImageDataUrl) {
+                visual.innerHTML = `<img src="${customImageDataUrl}" alt="自訂獎勵" class="max-h-full w-auto object-contain animate-bounce border-4 border-black rounded-3xl bg-white p-2 cartoon-shadow">`;
+            } else {
+                if (currentScenario === 'A') {
+                    visual.innerHTML = `<div class="text-[12rem] animate-bounce drop-shadow-[6px_6px_0_rgba(0,0,0,1)] leading-none">🏆</div>`;
+                } else {
+                    visual.innerHTML = `<img src="image_9c5c5f.png" alt="預設餅乾" class="max-h-full w-auto object-contain animate-bounce border-4 border-black rounded-3xl bg-white p-2 cartoon-shadow">`;
+                }
+            }
+
+            speak(customSpeechText); 
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            setTimeout(() => {
+                content.classList.remove('scale-0');
+                content.classList.add('scale-100', 'animate-pop');
+                playSuccessSound();
+            }, 50);
+        }
+
+        // 回到首頁重設
+        function resetApp() {
+            const modal = document.getElementById('reward-modal');
+            const content = document.getElementById('reward-content');
+            
+            content.classList.remove('scale-100', 'animate-pop');
+            content.classList.add('scale-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                
+                const taskScreen = document.getElementById('task-screen');
+                taskScreen.classList.add('hidden');
+                taskScreen.classList.remove('flex');
+                
+                document.getElementById('setup-screen').classList.remove('hidden');
+                
+                document.body.className = 'bg-yellow-200 h-screen w-screen flex items-center justify-center select-none overflow-hidden touch-manipulation text-black transition-colors duration-500';
+            }, 300);
+        }
+    </script>
+</body>
+</html>
